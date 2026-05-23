@@ -1,28 +1,23 @@
 # Python
 __pycache__/
-*.py[cod]
-*.so
-.Python
+*.pyc
 venv/
 ven/
-ENV/
-backend/vector_store/
+.env
+*.key
+
+# Vector store
+#backend/vector_store/
 backend/vector_store_precise/
 
-# Environment
-.env
-.env.local
-*.key
-secrets.json
+# Data files (keep structure only)
+backend/data/**/*.pdf
+!backend/data/**/.gitkeep
 
 # IDE
 .vscode/
 .idea/
-*.swp
-
-# Data files (keep structure but not files)
-backend/data/**/*.pdf
-!backend/data/**/.gitkeep
+.DS_Store
 
 # Logs
 *.log
