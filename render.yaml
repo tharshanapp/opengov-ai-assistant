@@ -1,16 +1,14 @@
 services:
   - type: web
-    name: opengov-ai
-    runtime: python
-    repo: https://github.com/YOUR_USERNAME/opengov-ai
+    name: opengov-ai-assistant
+    runtime: python3
     plan: free
     branch: main
     buildCommand: |
       cd backend
+      pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
-    startCommand: |
-      cd backend
-      uvicorn app:app --host 0.0.0.0 --port $PORT
+    startCommand: cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
