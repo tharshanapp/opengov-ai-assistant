@@ -1,11 +1,3 @@
-cd /Users/mac/Documents/Open_AI_Assistant/OpenGov_AI_Assistant
-
-# Check the current status of your rag_engine.py
-cat backend/rag_engine.py | head -20
-
-# If it still shows "from sklearn...", you need to update it
-# Create the correct version (no sklearn)
-cat > backend/rag_engine.py << 'EOF'
 """
 Simple RAG Engine - No scikit-learn required
 Uses basic keyword matching for document search
