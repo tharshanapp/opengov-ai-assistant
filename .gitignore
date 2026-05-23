@@ -7,7 +7,7 @@ ven/
 *.key
 
 # Vector store
-#backend/vector_store/
+backend/vector_store/
 backend/vector_store_precise/
 
 # Data files (keep structure only)
