@@ -5,3 +5,4 @@ pypdf
 numpy
 python-dotenv
 pydantic
+scikit-learn
