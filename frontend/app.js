@@ -1,9 +1,9 @@
 /**
  * OpenGov AI Assistant - Frontend JavaScript
- * Fixed version with proper API calls
+ * Fixed button functionality
  */
 
-// API URL - use relative path since frontend and backend are served together
+// API URL - use relative path
 const API_BASE_URL = '';
 
 let adminToken = '';
@@ -41,41 +41,16 @@ function testAPIConnection() {
         .then(response => response.json())
         .then(data => {
             console.log('API connected:', data);
-            showToast('API connected successfully', 'success');
         })
         .catch(error => {
             console.error('API connection failed:', error);
-            showToast('Warning: Backend not running. Please start the server.', 'warning');
         });
-}
-
-// ==================== Navigation ====================
-
-function showSection(section) {
-    // Hide all sections
-    document.querySelectorAll('.section').forEach(sec => {
-        sec.classList.remove('active');
-    });
-    
-    // Show selected section
-    const sectionId = section + '-section';
-    const sectionElement = document.getElementById(sectionId);
-    if (sectionElement) {
-        sectionElement.classList.add('active');
-    }
-    
-    // Update nav links
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.classList.remove('active');
-    });
-    if (event && event.target && event.target.closest('.nav-link')) {
-        event.target.closest('.nav-link').classList.add('active');
-    }
 }
 
 // ==================== Chat Functionality ====================
 
-async function askQuestion() {
+// Make askQuestion available globally
+window.askQuestion = async function() {
     console.log('askQuestion called');
     
     const questionInput = document.getElementById('question-input');
@@ -90,8 +65,6 @@ async function askQuestion() {
     const question = questionInput.value.trim();
     const category = categorySelect ? categorySelect.value : 'FR';
     
-    console.log('Question:', question, 'Category:', category);
-    
     if (!question) {
         showToast('Please enter a question', 'warning');
         questionInput.focus();
@@ -104,8 +77,6 @@ async function askQuestion() {
     
     // Add user message to chat
     addUserMessage(question);
-    
-    // Clear input
     questionInput.value = '';
     
     // Add loading message
@@ -123,19 +94,12 @@ async function askQuestion() {
             })
         });
         
-        console.log('Response status:', response.status);
-        
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('Response data:', data);
-        
-        // Remove loading message
         removeMessage(loadingMessageId);
-        
-        // Add AI response
         addAIResponse(data.answer, data.sources, data.category);
         
     } catch (error) {
@@ -143,29 +107,26 @@ async function askQuestion() {
         removeMessage(loadingMessageId);
         addErrorMessage(error.message || 'Connection error. Please check if the server is running.');
     } finally {
-        // Re-enable button
         askButton.disabled = false;
         askButton.innerHTML = '<i class="fas fa-paper-plane me-1"></i>Ask AI';
         questionInput.focus();
     }
-}
+};
 
-function handleKeyPress(event) {
+// Make handleKeyPress available globally
+window.handleKeyPress = function(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        askQuestion();
+        window.askQuestion();
     }
-}
+};
 
 function addUserMessage(message) {
     const chatMessages = document.getElementById('chat-messages');
     if (!chatMessages) return;
     
-    const messageId = 'msg-' + Date.now();
-    
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message user-message';
-    messageDiv.id = messageId;
     messageDiv.innerHTML = `
         <div class="message-avatar">
             <i class="fas fa-user"></i>
@@ -179,18 +140,11 @@ function addUserMessage(message) {
     
     chatMessages.appendChild(messageDiv);
     scrollToBottom();
-    return messageId;
 }
 
 function addAIResponse(answer, sources, category) {
     const chatMessages = document.getElementById('chat-messages');
     if (!chatMessages) return;
-    
-    const messageId = 'msg-' + Date.now();
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message ai-message';
-    messageDiv.id = messageId;
     
     let sourcesHtml = '';
     if (sources && sources.length > 0) {
@@ -208,6 +162,8 @@ function addAIResponse(answer, sources, category) {
         `;
     }
     
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ai-message';
     messageDiv.innerHTML = `
         <div class="message-avatar">
             <i class="fas fa-robot"></i>
@@ -217,7 +173,7 @@ function addAIResponse(answer, sources, category) {
                 <div class="ai-answer">${formatAnswer(answer)}</div>
                 ${sourcesHtml}
                 <div class="message-actions mt-2">
-                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${messageId}')">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard(this)">
                         <i class="fas fa-copy me-1"></i>Copy
                     </button>
                 </div>
@@ -227,8 +183,6 @@ function addAIResponse(answer, sources, category) {
     
     chatMessages.appendChild(messageDiv);
     scrollToBottom();
-    
-    return messageId;
 }
 
 function addLoadingMessage() {
@@ -236,10 +190,9 @@ function addLoadingMessage() {
     if (!chatMessages) return null;
     
     const messageId = 'loading-' + Date.now();
-    
     const messageDiv = document.createElement('div');
-    messageDiv.className = 'message ai-message';
     messageDiv.id = messageId;
+    messageDiv.className = 'message ai-message';
     messageDiv.innerHTML = `
         <div class="message-avatar">
             <i class="fas fa-robot"></i>
@@ -265,11 +218,8 @@ function addErrorMessage(error) {
     const chatMessages = document.getElementById('chat-messages');
     if (!chatMessages) return;
     
-    const messageId = 'msg-' + Date.now();
-    
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message ai-message';
-    messageDiv.id = messageId;
     messageDiv.innerHTML = `
         <div class="message-avatar">
             <i class="fas fa-exclamation-triangle"></i>
@@ -280,7 +230,7 @@ function addErrorMessage(error) {
                     <strong>Error:</strong> ${escapeHtml(error)}
                 </p>
                 <p class="mb-0 mt-2 text-muted small">
-                    Please make sure the backend is running: python app.py
+                    Please make sure the backend is running.
                 </p>
             </div>
         </div>
@@ -288,7 +238,6 @@ function addErrorMessage(error) {
     
     chatMessages.appendChild(messageDiv);
     scrollToBottom();
-    return messageId;
 }
 
 function removeMessage(messageId) {
@@ -307,7 +256,8 @@ function scrollToBottom() {
     }
 }
 
-function clearChat() {
+// Make clearChat available globally
+window.clearChat = function() {
     const chatMessages = document.getElementById('chat-messages');
     if (chatMessages) {
         chatMessages.innerHTML = `
@@ -325,59 +275,118 @@ function clearChat() {
             </div>
         `;
     }
-}
+};
 
-function showExamples() {
+// Make showExamples available globally
+window.showExamples = function() {
     const examples = [
         "What are the responsibilities of a voucher certifying officer?",
         "What are the financial regulations for government procurement?",
         "How do I process travel claims?",
         "What is the approval process for expenditures?",
-        "Explain the tender evaluation process",
-        "What are the spending limits for different officers?"
+        "Explain the tender evaluation process"
     ];
     
     const chatMessages = document.getElementById('chat-messages');
     if (!chatMessages) return;
     
-    const messageId = 'msg-' + Date.now();
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'message ai-message';
-    messageDiv.id = messageId;
-    messageDiv.innerHTML = `
-        <div class="message-avatar">
-            <i class="fas fa-lightbulb"></i>
-        </div>
-        <div class="message-content">
-            <div class="message-bubble ai-bubble">
-                <p class="mb-2"><strong>Example Questions:</strong></p>
-                <div class="example-questions">
-                    ${examples.map(ex => `
-                        <button class="example-btn" onclick="useExample('${escapeHtml(ex)}')">
-                            <i class="fas fa-comment-dots me-1"></i>${ex}
-                        </button>
-                    `).join('')}
+    let examplesHtml = `
+        <div class="message ai-message">
+            <div class="message-avatar">
+                <i class="fas fa-lightbulb"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-bubble ai-bubble">
+                    <p class="mb-2"><strong>Example Questions:</strong></p>
+                    <div class="example-questions">
+                        ${examples.map(ex => `
+                            <button class="example-btn" onclick="useExample('${escapeHtml(ex)}')">
+                                <i class="fas fa-comment-dots me-1"></i>${ex}
+                            </button>
+                        `).join('')}
+                    </div>
                 </div>
             </div>
         </div>
     `;
     
-    chatMessages.appendChild(messageDiv);
+    chatMessages.innerHTML += examplesHtml;
     scrollToBottom();
-}
+};
 
-function useExample(question) {
+// Make useExample available globally
+window.useExample = function(question) {
     const questionInput = document.getElementById('question-input');
     if (questionInput) {
         questionInput.value = question;
         questionInput.focus();
+        window.askQuestion();
     }
+};
+
+// Make copyToClipboard available globally
+window.copyToClipboard = function(button) {
+    const messageDiv = button.closest('.message');
+    const answerDiv = messageDiv.querySelector('.ai-answer');
+    const text = answerDiv.innerText;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard!', 'success');
+    }).catch(() => {
+        showToast('Failed to copy', 'error');
+    });
+};
+
+// ==================== Utility Functions ====================
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatAnswer(text) {
+    let formatted = escapeHtml(text);
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    formatted = formatted.replace(/\n/g, '<br>');
+    return formatted;
+}
+
+function showToast(message, type = 'info') {
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        `;
+        document.body.appendChild(toastContainer);
+    }
+    
+    const toast = document.createElement('div');
+    const alertClass = type === 'error' ? 'danger' : (type === 'warning' ? 'warning' : (type === 'success' ? 'success' : 'info'));
+    toast.className = `alert alert-${alertClass} alert-dismissible fade show`;
+    toast.style.cssText = 'min-width: 250px; animation: slideIn 0.3s ease;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 150);
+    }, 3000);
 }
 
 // ==================== Admin Functionality ====================
 
-function verifyAdmin() {
+window.verifyAdmin = function() {
     const tokenInput = document.getElementById('admin-token');
     const token = tokenInput.value.trim();
     
@@ -390,7 +399,7 @@ function verifyAdmin() {
     localStorage.setItem('adminToken', token);
     showAdminUpload();
     showToast('Login successful', 'success');
-}
+};
 
 function showAdminUpload() {
     const adminLogin = document.getElementById('admin-login');
@@ -400,7 +409,7 @@ function showAdminUpload() {
     if (adminUpload) adminUpload.classList.remove('d-none');
 }
 
-function logoutAdmin() {
+window.logoutAdmin = function() {
     adminToken = '';
     localStorage.removeItem('adminToken');
     
@@ -413,7 +422,7 @@ function logoutAdmin() {
     if (adminTokenInput) adminTokenInput.value = '';
     
     showToast('Logged out successfully', 'info');
-}
+};
 
 function initializeFileUpload() {
     const uploadArea = document.getElementById('upload-area');
@@ -477,7 +486,7 @@ function handleFileSelect(file) {
     if (uploadButton) uploadButton.disabled = false;
 }
 
-function removeFile() {
+window.removeFile = function() {
     selectedFile = null;
     const fileInput = document.getElementById('file-input');
     if (fileInput) fileInput.value = '';
@@ -494,9 +503,9 @@ function removeFile() {
     if (uploadButton) uploadButton.disabled = true;
     
     initializeFileUpload();
-}
+};
 
-function uploadFile() {
+window.uploadFile = function() {
     if (!selectedFile || !adminToken) {
         showToast('Please select a file and login', 'warning');
         return;
@@ -556,68 +565,4 @@ function uploadFile() {
         if (progressDiv) progressDiv.classList.add('d-none');
         if (uploadButton) uploadButton.disabled = false;
     });
-}
-
-// ==================== Utility Functions ====================
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function formatAnswer(text) {
-    let formatted = escapeHtml(text);
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    formatted = formatted.replace(/\n/g, '<br>');
-    formatted = formatted.replace(/^(\d+)\.\s+(.*?)$/gm, '<li>$2</li>');
-    return formatted;
-}
-
-function copyToClipboard(messageId) {
-    const message = document.getElementById(messageId);
-    if (!message) return;
-    
-    const answerDiv = message.querySelector('.ai-answer');
-    if (!answerDiv) return;
-    
-    const text = answerDiv.textContent;
-    
-    navigator.clipboard.writeText(text).then(() => {
-        showToast('Copied to clipboard!', 'success');
-    }).catch(() => {
-        showToast('Failed to copy', 'error');
-    });
-}
-
-function showToast(message, type = 'info') {
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        toastContainer.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-        `;
-        document.body.appendChild(toastContainer);
-    }
-    
-    const toast = document.createElement('div');
-    const alertClass = type === 'error' ? 'danger' : (type === 'warning' ? 'warning' : (type === 'success' ? 'success' : 'info'));
-    toast.className = `alert alert-${alertClass} alert-dismissible fade show`;
-    toast.style.cssText = 'min-width: 250px; animation: slideIn 0.3s ease;';
-    toast.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    toastContainer.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 150);
-    }, 3000);
-}
+};
