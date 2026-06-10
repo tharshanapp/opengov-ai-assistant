@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+ven/
+.env
+*.key
+
+# Vector store
+//backend/vector_store/
+//backend/vector_store_precise/
+
+# Data files (keep structure only)
+backend/data/**/*.pdf
+!backend/data/**/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log

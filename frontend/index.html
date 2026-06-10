@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open AI Assistant - for Officers </title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary-glass">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="fas fa-landmark me-2"></i>
+                <span class="brand-text">Open AI Assistant</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" onclick="showSection('chat')">
+                            <i class="fas fa-comments me-1"></i> Ask AI
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showSection('admin')">
+                            <i class="fas fa-upload me-1"></i> Upload PDF
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="showSection('about')">
+                            <i class="fas fa-info-circle me-1"></i> About
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="hero-header text-center mb-4">
+                <h1 class="display-5 fw-bold mb-2">
+                    <i class="fas fa-robot me-2"></i>Open AI Assistant
+                </h1>
+                <p class="lead text-muted">
+                    Your intelligent assistant for  Financial Regulations, 
+                    Procurement Guidelines, and Establishment Code
+                </p>
+                <div class="mt-2">
+                    <span class="badge bg-primary me-1"><i class="fas fa-database me-1"></i>Local RAG</span>
+                    <span class="badge bg-secondary me-1"><i class="fas fa-shield-alt me-1"></i>No API Required</span>
+                    <span class="badge bg-info"><i class="fas fa-lock me-1"></i>Private & Secure</span>
+                </div>
+            </div>
+
+            <div class="chat-container glass-card">
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message ai-message">
+                        <div class="message-avatar">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="message-content">
+                            <div class="message-bubble ai-bubble">
+                                <p class="mb-0"><strong>Welcome to Open AI Assistant!</strong></p>
+                                <p class="mb-0 mt-2">I can help you find information from:</p>
+                                <ul class="mb-0 mt-2">
+                                    <li><strong>Financial Regulations (FR)</strong></li>
+                                    <li><strong>Procurement Guidelines</strong></li>
+                                    <li><strong>Establishment Code</strong></li>
+                                </ul>
+                                <p class="mb-0 mt-2">Select a category and ask your question below.</p>
+                                <small class="text-muted">⚡ All processing is done locally - no external API required</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-area p-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label text-muted small">Category</label>
+                            <select class="form-select" id="category-select">
+                                <option value="FR">📋 Financial Regulations (FR)</option>
+                                <option value="Procurement">🛒 Procurement Guidelines</option>
+                                <option value="Establishment">📖 Establishment Code</option>
+                            </select>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label text-muted small">Your Question</label>
+                            <input type="text" class="form-control" id="question-input" 
+                                   placeholder="E.g., What are the responsibilities of a voucher certifying officer?" 
+                                   onkeypress="handleKeyPress(event)">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" id="ask-button" onclick="askQuestion()">
+                                <i class="fas fa-paper-plane me-1"></i>Ask AI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-actions mt-3 text-center">
+                <button class="btn btn-outline-secondary btn-sm me-2" onclick="clearChat()">
+                    <i class="fas fa-trash-alt me-1"></i>Clear Chat
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="showExamples()">
+                    <i class="fas fa-lightbulb me-1"></i>Show Examples
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <p class="text-muted mb-0">Open AI Assistant - for Officers & Learners (Testing Version) </p>
+            <p class="text-muted small mb-0">Powered by <a href="https://tharshan.lk" target="_blank">S. Tharshan</a> | Local RAG System</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

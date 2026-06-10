@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: opengov-ai-assistant
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+    startCommand: cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ADMIN_TOKEN
+        value: admin123
