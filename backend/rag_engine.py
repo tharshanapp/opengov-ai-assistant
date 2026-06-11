@@ -1,23 +1,19 @@
 """
-Advanced RAG Engine - Semantic Search with Regulation Detection
-Finds the MOST RELEVANT regulation for ANY question automatically
+Enhanced RAG Engine - Extracts complete answers from PDFs
+No external API needed for basic Q&A
 """
 
 import os
 import pickle
 import logging
 import re
-import numpy as np
-from typing import List, Dict, Any, Tuple
-from collections import Counter
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from typing import List, Dict, Any
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class AdvancedRAGEngine:
+class EnhancedRAGEngine:
     CATEGORIES = {
         "FR": "Financial Regulations",
         "Procurement": "Procurement Guidelines",
@@ -28,19 +24,13 @@ class AdvancedRAGEngine:
         self.persist_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "vector_store")
         self.documents = {cat: [] for cat in self.CATEGORIES.keys()}
         self.metadatas = {cat: [] for cat in self.CATEGORIES.keys()}
-        self.regulation_chunks = {cat: {} for cat in self.CATEGORIES.keys()}
         
         self._load_vector_store()
-        self._build_regulation_index()
         
-        if not any(self.documents.values()):
-            logger.warning("No existing vector store found. Please run python ingest.py first.")
-        else:
-            total_chunks = sum(len(docs) for docs in self.documents.values())
-            logger.info(f"Loaded {total_chunks} chunks from vector store")
+        total_chunks = sum(len(docs) for docs in self.documents.values())
+        logger.info(f"Loaded {total_chunks} chunks from vector store")
     
     def _load_vector_store(self):
-        """Load existing vector store files"""
         for category in self.CATEGORIES.keys():
             docs_path = os.path.join(self.persist_directory, f"{category}_docs.pkl")
             
@@ -57,191 +47,89 @@ class AdvancedRAGEngine:
                 except Exception as e:
                     logger.error(f"Error loading {category}: {e}")
     
-    def _save_vector_store(self, category: str):
-        """Save vector store to disk"""
-        docs_path = os.path.join(self.persist_directory, f"{category}_docs.pkl")
-        
-        with open(docs_path, 'wb') as f:
-            pickle.dump({
-                'documents': self.documents[category],
-                'metadatas': self.metadatas[category]
-            }, f)
-    
-    def add_documents(self, documents: List[Dict], category: str) -> Dict[str, Any]:
-        """Add documents to the vector store (for ingestion)"""
-        if category not in self.documents:
-            return {"status": "error", "message": "Invalid category"}
-        
-        for doc in documents:
-            self.documents[category].append(doc['content'])
-            self.metadatas[category].append(doc['metadata'])
-        
-        # Save to disk
-        self._save_vector_store(category)
-        
-        # Rebuild regulation index for this category
-        self._build_regulation_index_for_category(category)
-        
-        return {
-            "status": "success",
-            "documents_added": len(documents),
-            "category": category
-        }
-    
     def _extract_regulation_number(self, text: str) -> str:
-        """Extract regulation/F.R. number from text"""
         patterns = [
             r'(?:F\.R\.|FR)\s*(\d+(?:\.\d+)?)',
             r'(?:Regulation|Reg)\s*(\d+(?:\.\d+)?)',
-            r'(?:Section|Sec)\s*(\d+(?:\.\d+)?)',
-            r'\[(\d+(?:\.\d+)?)\]',
         ]
         for pattern in patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                if 'F.R.' in pattern or 'FR' in pattern:
-                    return f"F.R. {match.group(1)}"
-                return match.group(0)
+                return f"F.R. {match.group(1)}"
         return ""
     
-    def _build_regulation_index_for_category(self, category: str):
-        """Build regulation index for a single category"""
-        regulations = {}
+    def _extract_complete_section(self, content: str, reg_num: str) -> str:
+        """Extract complete regulation section including all bullet points"""
+        lines = content.split('\n')
+        result_lines = []
+        capture = False
+        bullet_count = 0
         
-        for i, doc in enumerate(self.documents[category]):
-            reg_num = self._extract_regulation_number(doc)
-            if reg_num and reg_num not in regulations:
-                # Get full regulation content (combine consecutive chunks)
-                content = doc
-                for j in range(i+1, min(i+5, len(self.documents[category]))):
-                    next_reg = self._extract_regulation_number(self.documents[category][j])
-                    if not next_reg:
-                        content += " " + self.documents[category][j]
-                    else:
-                        break
+        for line in lines:
+            if reg_num.lower() in line.lower():
+                capture = True
+                result_lines.append(line)
+                continue
+            
+            if capture:
+                # Check if we've reached a new regulation
+                if re.match(r'(?:F\.R\.|FR)\s*\d+', line, re.IGNORECASE):
+                    break
                 
-                regulations[reg_num] = {
-                    'content': content,
-                    'metadata': self.metadatas[category][i],
-                    'chunk_index': i
-                }
+                # Capture bullet points and numbered items
+                if re.match(r'\(\d+\)', line.strip()) or re.match(r'\d+\.', line.strip()):
+                    bullet_count += 1
+                    result_lines.append(line)
+                elif line.strip() and bullet_count > 0:
+                    # Continue capturing content after bullet points
+                    result_lines.append(line)
+                elif line.strip() and not re.match(r'\(?\d+\)?\.?\s*$', line.strip()):
+                    if len(result_lines) > 1:  # Only add if we already have regulation
+                        result_lines.append(line)
         
-        self.regulation_chunks[category] = regulations
-        logger.info(f"Found {len(regulations)} regulations in {category}")
+        return '\n'.join(result_lines)
     
-    def _build_regulation_index(self):
-        """Build an index of regulations with their content"""
-        for category in self.CATEGORIES.keys():
-            self._build_regulation_index_for_category(category)
-    
-    def _extract_key_phrases(self, text: str) -> List[str]:
-        """Extract important key phrases from question"""
-        stop_words = {'what', 'is', 'are', 'the', 'of', 'to', 'and', 'for', 'in', 'on', 'at', 'by', 'with', 
-                      'without', 'about', 'against', 'between', 'through', 'during', 'before', 'after', 
-                      'above', 'below', 'from', 'up', 'down', 'off', 'over', 'under', 'again', 'further', 
-                      'then', 'once', 'here', 'there', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 
-                      'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 
-                      'that', 'these', 'those', 'too', 'very', 'just', 'but', 'do', 'does', 'did', 'doing',
-                      'explain', 'describe', 'tell', 'me', 'about'}
-        
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
-        key_phrases = [w for w in words if w not in stop_words]
-        return key_phrases
-    
-    def _score_regulation_relevance(self, question: str, reg_content: str, reg_num: str) -> float:
-        """Score how relevant a regulation is to the question"""
-        question_lower = question.lower()
-        content_lower = reg_content.lower()
-        
-        # Extract key phrases from question
-        question_keywords = self._extract_key_phrases(question)
-        
-        if not question_keywords:
-            return 0
-        
-        # Calculate keyword matches
-        keyword_matches = sum(1 for kw in question_keywords if kw in content_lower)
-        keyword_score = keyword_matches / len(question_keywords)
-        
-        # Check if question keywords appear in regulation number
-        reg_num_score = 1.0 if any(kw in reg_num.lower() for kw in question_keywords) else 0
-        
-        # Check for phrase matches (exact or partial)
-        phrase_score = 0
-        if len(question) > 10:
-            question_parts = question_lower.split()
-            for i in range(len(question_parts) - 2):
-                phrase = ' '.join(question_parts[i:i+3])
-                if phrase in content_lower:
-                    phrase_score += 0.5
-        
-        # Check for specific responsibility indicators
-        responsibility_keywords = ['responsibility', 'responsible', 'duty', 'role', 'function', 'task', 'obligation']
-        is_responsibility_question = any(kw in question_lower for kw in responsibility_keywords)
-        has_responsibility_content = any(kw in content_lower for kw in responsibility_keywords)
-        responsibility_score = 0.3 if is_responsibility_question and has_responsibility_content else 0
-        
-        # Calculate final score (weighted)
-        final_score = (keyword_score * 3) + reg_num_score + phrase_score + responsibility_score
-        
-        return final_score
-    
-    def _get_best_regulation(self, question: str, category: str) -> Tuple[str, Dict, float]:
-        """Find the most relevant regulation for the question"""
-        best_score = 0
-        best_reg = None
-        best_content = None
-        
-        for reg_num, reg_data in self.regulation_chunks[category].items():
-            score = self._score_regulation_relevance(question, reg_data['content'], reg_num)
-            if score > best_score:
-                best_score = score
-                best_reg = reg_num
-                best_content = reg_data
-        
-        return best_reg, best_content, best_score
-    
-    def search(self, query: str, category: str, k: int = 3) -> List[Dict[str, Any]]:
-        """Search for the most relevant regulation(s)"""
-        
-        if category not in self.documents:
+    def search(self, query: str, category: str, k: int = 5) -> List[Dict[str, Any]]:
+        """Search for relevant documents with improved context extraction"""
+        if category not in self.documents or not self.documents[category]:
             return []
         
-        # First, try to find the best regulation match
-        best_reg, best_content, best_score = self._get_best_regulation(query, category)
+        query_lower = query.lower()
+        query_words = set(query_lower.split())
+        stop_words = {'what', 'is', 'are', 'the', 'of', 'to', 'and', 'for', 'in', 'on', 'at', 'by', 'with', 'a', 'an', 'be', 'was', 'were', 'has', 'have', 'had'}
+        query_keywords = {w for w in query_words if w not in stop_words and len(w) > 2}
         
-        if best_content and best_score > 0.3:
-            # Return the single best regulation with full content
-            logger.info(f"Best match: {best_reg} (score: {best_score:.2f})")
-            return [{
-                'content': best_content['content'],
-                'metadata': best_content['metadata'],
-                'relevance_score': min(best_score, 1.0),
-                'regulation': best_reg,
-                'is_exact_match': True
-            }]
-        
-        # Fallback to chunk-based search if no good regulation match
-        query_keywords = self._extract_key_phrases(query)
-        
-        if not query_keywords:
-            return []
+        # Check if asking about a specific regulation
+        reg_match = re.search(r'(?:F\.R\.|FR)\s*(\d+(?:\.\d+)?)', query, re.IGNORECASE)
+        target_reg = f"F.R. {reg_match.group(1)}" if reg_match else None
         
         results = []
         for i, doc in enumerate(self.documents[category]):
             doc_lower = doc.lower()
-            keyword_matches = sum(1 for kw in query_keywords if kw in doc_lower)
+            doc_reg = self._extract_regulation_number(doc)
             
-            if keyword_matches > 0:
-                reg_num = self._extract_regulation_number(doc)
+            # Calculate relevance score
+            if target_reg and target_reg in doc_lower:
+                relevance = 1.0  # Direct regulation match
+            else:
+                keyword_matches = sum(1 for kw in query_keywords if kw in doc_lower)
+                relevance = min(keyword_matches / max(len(query_keywords), 1), 1.0)
+            
+            if relevance > 0.05:
+                # Extract the complete section if it's a regulation
+                if doc_reg:
+                    content = self._extract_complete_section(doc, doc_reg)
+                else:
+                    content = doc
+                
                 results.append({
-                    'content': doc,
+                    'content': content,
                     'metadata': self.metadatas[category][i],
-                    'relevance_score': min(keyword_matches / len(query_keywords), 1.0),
-                    'regulation': reg_num,
-                    'is_exact_match': False
+                    'relevance_score': relevance,
+                    'regulation': doc_reg
                 })
         
+        # Sort by relevance and return top results
         results.sort(key=lambda x: x['relevance_score'], reverse=True)
         return results[:k]
     
@@ -251,15 +139,14 @@ class AdvancedRAGEngine:
         return {
             "category": category,
             "document_count": len(self.documents[category]),
-            "regulation_count": len(self.regulation_chunks.get(category, {})),
             "category_name": self.CATEGORIES[category]
         }
 
 
 _engine_instance = None
 
-def get_rag_engine() -> AdvancedRAGEngine:
+def get_rag_engine() -> EnhancedRAGEngine:
     global _engine_instance
     if _engine_instance is None:
-        _engine_instance = AdvancedRAGEngine()
+        _engine_instance = EnhancedRAGEngine()
     return _engine_instance
