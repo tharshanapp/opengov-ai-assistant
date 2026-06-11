@@ -1,9 +1,8 @@
 /**
  * OpenGov AI Assistant - Frontend JavaScript
- * Fixed button functionality
  */
 
-// API URL - use relative path
+// Use relative URLs - works in both local and production
 const API_BASE_URL = '';
 
 let adminToken = '';
@@ -16,23 +15,19 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeApp() {
-    // Check for saved admin token
     const savedToken = localStorage.getItem('adminToken');
     if (savedToken) {
         adminToken = savedToken;
         showAdminUpload();
     }
     
-    // Initialize file upload area
     initializeFileUpload();
     
-    // Focus on question input
     setTimeout(() => {
         const questionInput = document.getElementById('question-input');
         if (questionInput) questionInput.focus();
     }, 100);
     
-    // Test API connection
     testAPIConnection();
 }
 
@@ -41,28 +36,22 @@ function testAPIConnection() {
         .then(response => response.json())
         .then(data => {
             console.log('API connected:', data);
+            showToast('API connected successfully', 'success');
         })
         .catch(error => {
             console.error('API connection failed:', error);
+            showToast('Warning: Backend not responding', 'warning');
         });
 }
 
 // ==================== Chat Functionality ====================
 
-// Make askQuestion available globally
 window.askQuestion = async function() {
-    console.log('askQuestion called');
-    
     const questionInput = document.getElementById('question-input');
     const categorySelect = document.getElementById('category-select');
     const askButton = document.getElementById('ask-button');
     
-    if (!questionInput) {
-        console.error('Question input not found');
-        return;
-    }
-    
-    const question = questionInput.value.trim();
+    const question = questionInput ? questionInput.value.trim() : '';
     const category = categorySelect ? categorySelect.value : 'FR';
     
     if (!question) {
@@ -71,15 +60,12 @@ window.askQuestion = async function() {
         return;
     }
     
-    // Disable button and show loading
     askButton.disabled = true;
     askButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
     
-    // Add user message to chat
     addUserMessage(question);
     questionInput.value = '';
     
-    // Add loading message
     const loadingMessageId = addLoadingMessage();
     
     try {
@@ -113,7 +99,6 @@ window.askQuestion = async function() {
     }
 };
 
-// Make handleKeyPress available globally
 window.handleKeyPress = function(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
@@ -128,16 +113,11 @@ function addUserMessage(message) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message user-message';
     messageDiv.innerHTML = `
-        <div class="message-avatar">
-            <i class="fas fa-user"></i>
-        </div>
+        <div class="message-avatar"><i class="fas fa-user"></i></div>
         <div class="message-content">
-            <div class="message-bubble user-bubble">
-                <p class="mb-0">${escapeHtml(message)}</p>
-            </div>
+            <div class="message-bubble user-bubble">${escapeHtml(message)}</div>
         </div>
     `;
-    
     chatMessages.appendChild(messageDiv);
     scrollToBottom();
 }
@@ -165,22 +145,14 @@ function addAIResponse(answer, sources, category) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message ai-message';
     messageDiv.innerHTML = `
-        <div class="message-avatar">
-            <i class="fas fa-robot"></i>
-        </div>
+        <div class="message-avatar"><i class="fas fa-robot"></i></div>
         <div class="message-content">
             <div class="message-bubble ai-bubble">
                 <div class="ai-answer">${formatAnswer(answer)}</div>
                 ${sourcesHtml}
-                <div class="message-actions mt-2">
-                    <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard(this)">
-                        <i class="fas fa-copy me-1"></i>Copy
-                    </button>
-                </div>
             </div>
         </div>
     `;
-    
     chatMessages.appendChild(messageDiv);
     scrollToBottom();
 }
@@ -194,21 +166,14 @@ function addLoadingMessage() {
     messageDiv.id = messageId;
     messageDiv.className = 'message ai-message';
     messageDiv.innerHTML = `
-        <div class="message-avatar">
-            <i class="fas fa-robot"></i>
-        </div>
+        <div class="message-avatar"><i class="fas fa-robot"></i></div>
         <div class="message-content">
             <div class="message-bubble ai-bubble">
-                <div class="loading-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
+                <div class="loading-dots"><span></span><span></span><span></span></div>
                 <span class="ms-2 text-muted">Searching documents...</span>
             </div>
         </div>
     `;
-    
     chatMessages.appendChild(messageDiv);
     scrollToBottom();
     return messageId;
@@ -221,30 +186,21 @@ function addErrorMessage(error) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message ai-message';
     messageDiv.innerHTML = `
-        <div class="message-avatar">
-            <i class="fas fa-exclamation-triangle"></i>
-        </div>
+        <div class="message-avatar"><i class="fas fa-exclamation-triangle"></i></div>
         <div class="message-content">
             <div class="message-bubble ai-bubble" style="border-left: 4px solid #f56565;">
-                <p class="mb-0 text-danger">
-                    <strong>Error:</strong> ${escapeHtml(error)}
-                </p>
-                <p class="mb-0 mt-2 text-muted small">
-                    Please make sure the backend is running.
-                </p>
+                <p class="mb-0 text-danger"><strong>Error:</strong> ${escapeHtml(error)}</p>
+                <p class="mb-0 mt-2 text-muted small">Please make sure the backend is running.</p>
             </div>
         </div>
     `;
-    
     chatMessages.appendChild(messageDiv);
     scrollToBottom();
 }
 
 function removeMessage(messageId) {
     const message = document.getElementById(messageId);
-    if (message) {
-        message.remove();
-    }
+    if (message) message.remove();
 }
 
 function scrollToBottom() {
@@ -256,20 +212,15 @@ function scrollToBottom() {
     }
 }
 
-// Make clearChat available globally
 window.clearChat = function() {
     const chatMessages = document.getElementById('chat-messages');
     if (chatMessages) {
         chatMessages.innerHTML = `
             <div class="message ai-message">
-                <div class="message-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
+                <div class="message-avatar"><i class="fas fa-robot"></i></div>
                 <div class="message-content">
                     <div class="message-bubble ai-bubble">
-                        <p class="mb-0">
-                            <strong>Chat cleared!</strong> How can I help you today?
-                        </p>
+                        <p class="mb-0"><strong>Chat cleared!</strong> How can I help you today?</p>
                     </div>
                 </div>
             </div>
@@ -277,7 +228,6 @@ window.clearChat = function() {
     }
 };
 
-// Make showExamples available globally
 window.showExamples = function() {
     const examples = [
         "What are the responsibilities of a voucher certifying officer?",
@@ -292,9 +242,7 @@ window.showExamples = function() {
     
     let examplesHtml = `
         <div class="message ai-message">
-            <div class="message-avatar">
-                <i class="fas fa-lightbulb"></i>
-            </div>
+            <div class="message-avatar"><i class="fas fa-lightbulb"></i></div>
             <div class="message-content">
                 <div class="message-bubble ai-bubble">
                     <p class="mb-2"><strong>Example Questions:</strong></p>
@@ -309,12 +257,10 @@ window.showExamples = function() {
             </div>
         </div>
     `;
-    
     chatMessages.innerHTML += examplesHtml;
     scrollToBottom();
 };
 
-// Make useExample available globally
 window.useExample = function(question) {
     const questionInput = document.getElementById('question-input');
     if (questionInput) {
@@ -324,7 +270,6 @@ window.useExample = function(question) {
     }
 };
 
-// Make copyToClipboard available globally
 window.copyToClipboard = function(button) {
     const messageDiv = button.closest('.message');
     const answerDiv = messageDiv.querySelector('.ai-answer');
@@ -358,12 +303,7 @@ function showToast(message, type = 'info') {
     if (!toastContainer) {
         toastContainer = document.createElement('div');
         toastContainer.id = 'toast-container';
-        toastContainer.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-        `;
+        toastContainer.style.cssText = `position: fixed; top: 20px; right: 20px; z-index: 9999;`;
         document.body.appendChild(toastContainer);
     }
     
@@ -371,10 +311,7 @@ function showToast(message, type = 'info') {
     const alertClass = type === 'error' ? 'danger' : (type === 'warning' ? 'warning' : (type === 'success' ? 'success' : 'info'));
     toast.className = `alert alert-${alertClass} alert-dismissible fade show`;
     toast.style.cssText = 'min-width: 250px; animation: slideIn 0.3s ease;';
-    toast.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
+    toast.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
     
     toastContainer.appendChild(toast);
     
@@ -475,9 +412,7 @@ function handleFileSelect(file) {
                 <div class="file-name">${escapeHtml(file.name)}</div>
                 <div class="file-size">${fileSize} MB</div>
             </div>
-            <div class="remove-file" onclick="removeFile()">
-                <i class="fas fa-times"></i>
-            </div>
+            <div class="remove-file" onclick="removeFile()"><i class="fas fa-times"></i></div>
         </div>
         <p class="text-muted small mt-2 mb-0">Click to change file</p>
     `;
@@ -526,9 +461,7 @@ window.uploadFile = function() {
     
     fetch('/admin/upload', {
         method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${adminToken}`
-        },
+        headers: { 'Authorization': `Bearer ${adminToken}` },
         body: formData
     })
     .then(response => {
