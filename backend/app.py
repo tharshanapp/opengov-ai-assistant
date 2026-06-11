@@ -1,5 +1,5 @@
 """
-OpenGov AI Assistant - Enhanced RAG with Complete Answers
+OpenGov AI Assistant - Regulation-Focused Answers
 """
 
 from fastapi import FastAPI
@@ -19,7 +19,6 @@ from rag_engine import get_rag_engine
 
 app = FastAPI(title="OpenGov AI Assistant", version="3.0.0")
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -46,7 +45,8 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "document_chunks": stats
+        "document_chunks": stats,
+        "regulations_found": {cat: s.get('regulations_found', 0) for cat, s in stats.items()}
     }
 
 
@@ -54,6 +54,9 @@ async def health_check():
 async def ask_question(request: AskRequest):
     try:
         logger.info(f"Question: {request.question} | Category: {request.category}")
+        
+        # Extract regulation number from question
+        fr_match = re.search(r'(?:F\.R\.|FR)\s*(\d+(?:\.\d+)?)', request.question, re.IGNORECASE)
         
         results = rag_engine.search(
             query=request.question,
@@ -63,15 +66,20 @@ async def ask_question(request: AskRequest):
         
         if not results:
             return {
-                "answer": "I couldn't find any relevant information in the documents. Please try rephrasing your question or check if PDF documents have been uploaded.",
+                "answer": "I couldn't find any relevant information. Please ensure PDF documents have been uploaded.",
                 "sources": [],
                 "category": request.category,
                 "timestamp": datetime.now().isoformat()
             }
         
-        # Build answer from the best result
+        # Build answer
         best = results[0]
-        answer = _format_answer(best, request.question)
+        
+        # If the best result has a regulation number, format it nicely
+        if best.get('regulation'):
+            answer = _format_regulation_answer(best)
+        else:
+            answer = _format_general_answer(best)
         
         sources = []
         for r in results[:3]:
@@ -97,44 +105,53 @@ async def ask_question(request: AskRequest):
         )
 
 
-def _format_answer(result: dict, question: str) -> str:
-    """Format the answer nicely from the search result"""
+def _format_regulation_answer(result: dict) -> str:
+    """Format answer when a regulation number is found"""
     content = result['content']
     regulation = result.get('regulation', '')
     page = result['metadata'].get('page', 'N/A')
     
-    # Clean up the content
+    # Clean the content
     lines = content.split('\n')
     cleaned_lines = []
     
     for line in lines:
         line = line.strip()
-        if line and len(line) > 5:
-            # Clean up common artifacts
+        if line and len(line) > 3:
+            # Clean up whitespace
             line = re.sub(r'\s+', ' ', line)
             cleaned_lines.append(line)
     
-    # Format regulation header
-    if regulation:
-        header = f"**{regulation}** (Page {page})\n\n"
-    else:
-        header = f"**From Document** (Page {page})\n\n"
+    # Build answer
+    answer = f"**{regulation}** (Page {page})\n\n"
     
-    # Format bullet points and numbered items
-    body_lines = []
+    # Process each line to highlight key items
     for line in cleaned_lines:
-        # Format numbered items like (1), (2), etc.
+        # Highlight numbered items like (1), (2)
         if re.match(r'\(\d+\)', line):
-            body_lines.append(f"\n**{line}**")
-        # Format numbered items like 1., 2., etc.
+            answer += f"\n**{line}**"
+        # Highlight numbered items like 1., 2.
         elif re.match(r'\d+\.', line):
-            body_lines.append(f"\n**{line}**")
+            answer += f"\n**{line}**"
         else:
-            body_lines.append(line)
+            answer += f"\n{line}"
     
-    body = '\n'.join(body_lines)
+    return answer
+
+
+def _format_general_answer(result: dict) -> str:
+    """Format general answer without regulation number"""
+    content = result['content']
+    page = result['metadata'].get('page', 'N/A')
+    source = result['metadata'].get('source', 'Document')
     
-    return header + body
+    lines = content.split('\n')
+    cleaned_lines = [line.strip() for line in lines if line.strip() and len(line.strip()) > 10]
+    
+    answer = f"**From {source}** (Page {page})\n\n"
+    answer += '\n'.join(cleaned_lines[:20])  # Limit to 20 lines
+    
+    return answer
 
 
 # Serve Frontend
@@ -169,9 +186,8 @@ if os.path.exists(FRONTEND_PATH):
 if __name__ == "__main__":
     import uvicorn
     print("=" * 60)
-    print("📚 OpenGov AI Assistant - Enhanced RAG Version")
+    print("📚 OpenGov AI Assistant - Regulation-Focused Version")
     print("=" * 60)
     print("📍 Server: http://localhost:8000")
-    print("📍 No external API needed - Works with your documents")
     print("=" * 60)
     uvicorn.run(app, host="0.0.0.0", port=8000)
